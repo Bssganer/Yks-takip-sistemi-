@@ -1,0 +1,50 @@
+name: Build APK from ZIP
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Depoyu Klonla
+        uses: actions/checkout@v4
+
+      - name: ZIP Dosyasini Otomatik Ac
+        run: |
+          if [ -f "yks_sayisal_takip_proje.zip" ]; then
+            unzip -o yks_sayisal_takip_proje.zip
+          fi
+
+      - name: Java (JDK 17) Kur
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Flutter Kur
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Android Dosyalarini ve Izinleri Olustur
+        run: |
+          flutter create --platforms=android --org com.yks.sayisal .
+          MANIFEST="android/app/src/main/AndroidManifest.xml"
+          if ! grep -q "POST_NOTIFICATIONS" "$MANIFEST"; then
+            sed -i 's/<application/<uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"\/>\n    <uses-permission android:name="android.permission.VIBRATE"\/>\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"\/>\n    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"\/>\n    <uses-permission android:name="android.permission.USE_EXACT_ALARM"\/>\n    <application/' "$MANIFEST"
+          fi
+          flutter pub get
+
+      - name: Release APK Derle
+        run: flutter build apk --release
+
+      - name: APK Dosyasini Hazirla (Artifact)
+        uses: actions/upload-artifact@v4
+        with:
+          name: yks-sayisal-takip-release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
